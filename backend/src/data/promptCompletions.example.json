@@ -1,0 +1,23 @@
+[
+  {
+    "prompt": "I'm feeling anxious about my job interview tomorrow",
+    "completion": "It's completely normal to feel anxious before a job interview. Many people experience this. Try taking some deep breaths and remember that you've prepared for this. Focus on your strengths and what you can bring to the role. You've got this!"
+  },
+  {
+    "prompt": "I'm struggling with stress at work",
+    "completion": "Work stress can be overwhelming. It's important to recognize when you're feeling this way. Consider taking regular breaks, practicing mindfulness, or talking to your supervisor about your workload. Remember, your well-being matters."
+  },
+  {
+    "prompt": "I feel sad today",
+    "completion": "I'm sorry to hear you're feeling sad. It's okay to have these feelings. Would you like to talk about what might be causing this sadness? Sometimes expressing our emotions can help us process them better."
+  },
+  {
+    "prompt": "I can't sleep at night",
+    "completion": "Sleep issues can be really challenging. Have you tried establishing a bedtime routine? Things like avoiding screens before bed, reading, or relaxation techniques can help. What usually goes through your mind when you're trying to sleep?"
+  },
+  {
+    "prompt": "I'm feeling overwhelmed",
+    "completion": "Feeling overwhelmed is understandable. Let's break things down into smaller, manageable steps. What's the most pressing thing on your mind right now? Sometimes prioritizing can help us feel more in control."
+  }
+]
+

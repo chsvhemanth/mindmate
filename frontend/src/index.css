@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Calm Therapeutic Palette */
+    --background: 220 25% 97%;
+    --foreground: 220 15% 25%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 25%;
+
+    /* Soft Periwinkle - Peace, serenity */
+    --primary: 225 45% 75%;
+    --primary-foreground: 220 15% 15%;
+    --primary-glow: 225 60% 85%;
+
+    /* Gentle Lavender - Calm, healing */
+    --secondary: 265 35% 75%;
+    --secondary-foreground: 220 15% 15%;
+    --secondary-glow: 265 50% 85%;
+
+    /* Soft Sage - Growth, balance */
+    --accent: 140 30% 75%;
+    --accent-foreground: 220 15% 15%;
+    --accent-glow: 140 45% 85%;
+
+    --muted: 220 20% 94%;
+    --muted-foreground: 220 12% 45%;
+
+    --destructive: 0 50% 70%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 225 45% 75%;
+
+    --radius: 1.5rem;
+
+    /* Emotion-specific soft colors */
+    --emotion-happy: 140 35% 75%;
+    --emotion-sad: 215 40% 75%;
+    --emotion-angry: 5 45% 75%;
+    --emotion-calm: 265 35% 75%;
+    --emotion-anxious: 35 45% 78%;
+
+    /* Soft Gradients */
+    --gradient-calm: linear-gradient(135deg, hsl(225 45% 85%), hsl(265 35% 85%));
+    --gradient-peaceful: linear-gradient(135deg, hsl(225 45% 90%), hsl(140 30% 90%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100% / 0.95), hsl(220 20% 98% / 0.9));
+    --gradient-hero: linear-gradient(135deg, hsl(225 50% 92%), hsl(265 40% 92%));
+
+    /* Soft Shadows */
+    --shadow-soft: 0 4px 24px hsl(225 45% 75% / 0.12);
+    --shadow-glow: 0 0 40px hsl(225 45% 85% / 0.2);
+    --shadow-card: 0 8px 32px hsl(225 30% 60% / 0.08);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 30% 10%;
+    --foreground: 220 15% 92%;
+
+    --card: 220 25% 13%;
+    --card-foreground: 220 15% 92%;
+
+    --popover: 220 25% 13%;
+    --popover-foreground: 220 15% 92%;
+
+    --primary: 225 40% 65%;
+    --primary-foreground: 220 15% 98%;
+    --primary-glow: 225 50% 75%;
+
+    --secondary: 265 30% 65%;
+    --secondary-foreground: 220 15% 98%;
+    --secondary-glow: 265 40% 75%;
+
+    --accent: 140 25% 65%;
+    --accent-foreground: 220 15% 98%;
+    --accent-glow: 140 35% 75%;
+
+    --muted: 220 25% 18%;
+    --muted-foreground: 220 12% 55%;
+
+    --destructive: 0 45% 60%;
+    --destructive-foreground: 220 15% 98%;
+
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 225 40% 65%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Poppins', 'Nunito Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-xl bg-white/60 border border-white/60 shadow-[0_8px_32px_0_rgba(175,195,220,0.15)];
+  }
+
+  .glass-card-dark {
+    @apply backdrop-blur-xl bg-card/40 border border-border/40;
+  }
+
+  .smooth-transition {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-lg;
+  }
+
+  .touch-feedback {
+    @apply active:scale-[0.98] transition-transform duration-150;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .pulse-gentle {
+    animation: pulseGentle 2s ease-in-out infinite;
+  }
+
+  .emotion-glow-happy {
+    box-shadow: 0 0 24px hsl(var(--emotion-happy) / 0.3);
+  }
+
+  .emotion-glow-sad {
+    box-shadow: 0 0 24px hsl(var(--emotion-sad) / 0.3);
+  }
+
+  .emotion-glow-calm {
+    box-shadow: 0 0 24px hsl(var(--emotion-calm) / 0.3);
+  }
+
+  .emotion-glow-anxious {
+    box-shadow: 0 0 24px hsl(var(--emotion-anxious) / 0.3);
+  }
+
+  .emotion-glow-angry {
+    box-shadow: 0 0 24px hsl(var(--emotion-angry) / 0.3);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGentle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
