@@ -192,9 +192,9 @@ The application should now be running, typically accessible at `http://localhost
 - **Real-time Features:** Current implementation does not include real-time notifications or live updates. Future enhancements may require WebSocket integration for real-time therapist booking confirmations and event updates.
 
 ## Team (names, roles, contacts)
-- **Satya Venkata Hemanth Challapalli:** Solo team , satyavhemanth2005@gmail.com
-**Contact:** 
-- GitHub: [https;//github.com/chsvhemanth]
+- **Satya Venkata Hemanth Challapalli:** Solo team , satyavhemanth2005@gmail.com .
+- **Contact:** 
+- GitHub: [https://github.com/chsvhemanth]
 - Email: satyavhemanth2005@gmail.com
 - Issues: Please report bugs or feature requests through GitHub Issues
 
