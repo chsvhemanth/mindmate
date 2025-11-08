@@ -77,6 +77,7 @@ The backend system that manages:
 
 #### Chat Features
 - **Text Chat**: Have anonymous or authenticated conversations with AI therapist
+- **Content Filtering**: Automatic filtering of profanity, off-topic content, and non-mental health related messages
 - **Emotion Analysis**: Automatic emotion detection from messages
 - **Chat History**: View and manage conversation history
 - **Multiple Chat Sessions**: Create and manage multiple chat threads
@@ -135,6 +136,7 @@ The backend system that manages:
 
 #### AI & Processing
 - **Generate Responses**: Use Groq API for empathetic AI responses
+- **Content Filtering**: Validate messages for profanity, topic relevance, and mental health focus
 - **Emotion Analysis**: Analyze text and voice for emotional state
 - **Context Management**: Maintain conversation history for better responses
 - **Prompt Matching**: Match user queries to appropriate therapeutic responses
@@ -184,14 +186,19 @@ The backend system that manages:
    a. System analyzes emotion from text
    b. Prepares conversation history (last 10 messages)
    c. Sends to backend API with emotion context
-   d. Backend calls Groq API with:
+   d. Backend validates message content:
+      - Checks for profanity (containsProfanity)
+      - Checks if message is off-topic (isOffTopic)
+      - Checks if message is mental health related (isMentalHealthRelated)
+      - If validation fails, returns appropriate error message to user
+   e. If valid, backend calls Groq API with:
       - User message
       - Conversation history
       - Detected emotion
       - System prompt for therapist-like responses
-   e. AI generates empathetic response
-   f. Response displayed to user
-   g. Emotion indicator updated
+   f. AI generates empathetic response
+   g. Response displayed to user
+   h. Emotion indicator updated
 5. Conversation continues with context maintained
 6. User can:
    - Create new chat session
@@ -473,6 +480,34 @@ The backend system that manages:
 3. Events appear in community feed
 ```
 
+### 11. Content Filtering Workflow
+
+```
+1. User sends message in chat
+2. Message sent to backend API endpoint: POST /api/chats/ai/response
+3. Backend validates message using validateMessage() function:
+   a. Checks if message is empty → Returns: "Message is empty"
+   b. Checks for profanity using containsProfanity():
+      - Compares message against PROFANITY_WORDS list
+      - Checks both individual words and full message
+      - If profanity detected → Returns: "I'm a mental health-focused AI, and I prefer to keep our conversations respectful and supportive. Could you please rephrase your message without profanity? I'm here to help with mental health concerns."
+   c. Checks if message is off-topic using isOffTopic():
+      - Compares against OFF_TOPIC_KEYWORDS (recipes, sports, movies, etc.)
+      - Allows off-topic keywords if in mental health context
+      - If off-topic → Returns: "I'm a specialized AI focused exclusively on mental health and wellness. I can help you with emotions, stress, anxiety, depression, relationships, therapy, coping strategies, and other mental health topics. Could you please ask me something related to mental health or emotional wellbeing?"
+   d. Checks if message is mental health related using isMentalHealthRelated():
+      - Compares against MENTAL_HEALTH_KEYWORDS
+      - Checks for mental health patterns (e.g., "I feel", "I'm struggling")
+      - If not mental health related → Returns: "I'm a mental health-focused AI assistant. I'm here to help with emotions, stress, anxiety, depression, relationships, coping strategies, therapy, and wellness. Please share something related to your mental health or emotional wellbeing, and I'll be happy to help."
+4. If validation passes (valid: true):
+   - Message proceeds to AI response generation
+   - Groq API called with filtered, validated message
+5. If validation fails:
+   - Validation error message returned as AI response
+   - No API call made to Groq
+   - User sees friendly redirect message
+```
+
 ---
 
 ## System Architecture
@@ -517,8 +552,10 @@ The backend system that manages:
 - `GET /api/chats/user/:userId` - Get user's chat sessions
 - `GET /api/chats/:chatId` - Get specific chat
 - `POST /api/chats/:chatId/messages` - Add message to chat
-- `POST /api/chats/ai/response` - Get AI response (Groq)
+- `POST /api/chats/ai/response` - Get AI response (Groq) - includes content filtering
 - `DELETE /api/chats/:chatId` - Delete chat
+- `GET /api/chats/ai/prompts` - Get prompt-completion pairs (authenticated)
+- `POST /api/chats/ai/prompts` - Update prompt-completion pairs (authenticated)
 
 ### Emotions
 - `POST /api/emotions` - Record emotion
@@ -673,6 +710,7 @@ The backend system that manages:
 - Real-time speech recognition and synthesis
 - Geospatial queries for location-based matching
 - Emotion-aware AI responses
+- Content filtering (profanity, topic relevance, mental health focus)
 - Responsive design (mobile-friendly)
 - Secure API endpoints
 - MongoDB with geospatial indexes

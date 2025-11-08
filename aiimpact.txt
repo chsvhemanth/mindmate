@@ -1,0 +1,35 @@
+AI Impact Statement
+
+Tasks automated/augmented:
+- AI-powered chat therapy providing 24/7 empathetic responses to mental health queries
+- Real-time emotion analysis from text and voice inputs
+- Automated conversation context management and personalized therapeutic responses
+- Voice-based therapy sessions with speech-to-text and text-to-speech conversion
+- Content filtering and topic validation to ensure mental health focus
+
+Model(s) used & justification:
+- Groq's Llama 3.1 8B Instant model for chat responses: Fast inference, cost-effective, and optimized for conversational AI with empathetic responses
+- Custom prompt-completion matching system for consistent, validated responses
+- Web Speech API for browser-based speech recognition and synthesis
+
+Data provenance & licenses:
+- User-generated content: Chat messages, emotion entries, event data (proprietary, user-owned)
+- Seeded therapist and event data: Created for demonstration (proprietary)
+- Groq API: Apache 2.0 License
+- Prompt completions database: Curated mental health responses (proprietary)
+- No training data collected; all data used for inference only
+
+Guardrails & evaluation plan:
+- Content filtering: Profanity detection and mental health topic validation before AI processing
+- System prompts enforce mental health-only focus with explicit redirection rules
+- No medical diagnoses; clear disclaimers that AI is not a substitute for professional therapy
+- Regular monitoring of AI responses for bias, hallucinations, and inappropriate content
+- User feedback mechanisms for continuous improvement
+- Input validation and sanitization on all user inputs
+
+Expected user/business/safety impact:
+- Positive: 24/7 accessible mental health support, reduced barriers to care, stigma-free environment
+- Safety: Content filtering prevents inappropriate interactions; clear boundaries prevent medical advice
+- Business: Scalable mental health support platform with potential for therapist booking integration
+- Risk mitigation: Clear disclaimers, professional boundaries, and redirect to human therapists when needed
+

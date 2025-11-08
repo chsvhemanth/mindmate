@@ -1,0 +1,1493 @@
+================================================================================
+MINDMATE - WORKFLOWS DOCUMENTATION
+================================================================================
+
+This document contains detailed workflows for all features in the MindMate
+mental health and wellness platform. Each workflow includes actors, steps,
+decision points, and system interactions.
+
+================================================================================
+WORKFLOW 1: USER REGISTRATION & ONBOARDING
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- System/Backend
+
+PRECONDITIONS:
+- User has access to the MindMate application
+- User has not registered or is not logged in
+
+WORKFLOW STEPS:
+
+1. USER INITIATES REGISTRATION
+   Actor: User
+   Action: User visits homepage and clicks "Sign In" or "Get Started"
+   System Response: Display authentication options
+
+2. USER SELECTS AUTHENTICATION METHOD
+   Actor: User
+   Decision Point: Choose between:
+   a. Email/Password Registration
+   b. Google OAuth
+
+3A. EMAIL/PASSWORD REGISTRATION PATH
+   Actor: User
+   Steps:
+   a. User enters email, password, optional name
+   b. User submits registration form
+   
+   Actor: System
+   Steps:
+   a. Validate email format
+   b. Check if email/username already exists
+   c. Validate password strength
+   d. Hash password using bcrypt
+   e. Create new User document in MongoDB
+   f. Generate JWT token (expires in 30 days)
+   g. Return user data and token
+   
+   Actor: Frontend
+   Steps:
+   a. Store JWT token in localStorage
+   b. Store user data in AuthContext
+   c. Redirect to Onboarding (if first time) or Dashboard
+
+3B. GOOGLE OAUTH REGISTRATION PATH
+   Actor: User
+   Steps:
+   a. User clicks "Sign in with Google"
+   b. User authorizes MindMate on Google consent screen
+   
+   Actor: System
+   Steps:
+   a. Receive Google ID token from frontend
+   b. Verify token with Google OAuth2Client
+   c. Extract user info (email, name, picture, googleId)
+   d. Check if user exists by googleId or email
+   e. If exists: Update user if needed, generate JWT
+   f. If new: Create user with Google info, generate JWT
+   g. Return user data and token
+   
+   Actor: Frontend
+   Steps:
+   a. Store JWT token in localStorage
+   b. Store user data in AuthContext
+   c. Redirect to Onboarding (if first time) or Dashboard
+
+4. ONBOARDING PROCESS (First Time Users)
+   Actor: User
+   Steps:
+   a. User completes "Know Your Mind" (KYM) questionnaire:
+      - Step 1: Personal Info (name, age, occupation)
+      - Step 2: Lifestyle (sleep, stress, exercise)
+      - Step 3: Goals & Preferences
+      - Step 4: Medical Info & Emergency Contact
+   b. User submits each step
+   
+   Actor: System
+   Steps:
+   a. Save onboarding data to localStorage (temporary)
+   b. On final submission, save to backend
+   c. Update user profile with KYM data
+   
+   Actor: Frontend
+   Steps:
+   a. Save progress to localStorage
+   b. On completion, redirect to Dashboard
+
+5. COMPLETION
+   Actor: System
+   Action: User is authenticated and onboarded
+   Result: User can access all features
+
+POSTCONDITIONS:
+- User account created in database
+- User authenticated with JWT token
+- User profile contains onboarding data (if completed)
+- User redirected to Dashboard
+
+ERROR HANDLING:
+- Email already exists → Show error message
+- Invalid email format → Show validation error
+- Weak password → Show password requirements
+- Google auth failure → Show error, allow retry
+- Network error → Show connection error, allow retry
+
+================================================================================
+WORKFLOW 2: TEXT CHAT WITH AI THERAPIST
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Backend API
+- Content Filter System
+- Groq AI API
+- Emotion Analysis System
+
+PRECONDITIONS:
+- User is on Chat page
+- User may be authenticated or anonymous
+- Backend API is running
+- Groq API key is configured
+
+WORKFLOW STEPS:
+
+1. USER INITIATES CHAT
+   Actor: User
+   Action: Navigates to Chat page
+   
+   Actor: Frontend
+   Action: 
+   a. Displays welcome message
+   b. Loads existing chat sessions (if authenticated)
+   c. Initializes chat interface
+
+2. USER COMPOSES MESSAGE
+   Actor: User
+   Action: Types message in chat input field
+   
+   Actor: Frontend
+   Action: 
+   a. Captures user input
+   b. Analyzes emotion from text (client-side)
+   c. Prepares conversation history (last 10 messages)
+
+3. USER SENDS MESSAGE
+   Actor: User
+   Action: Clicks send button or presses Enter
+   
+   Actor: Frontend
+   Action:
+   a. Displays user message in chat UI
+   b. Shows loading indicator
+   c. Prepares API request with:
+      - Message content
+      - Conversation history
+      - Detected emotion
+      - User ID (if authenticated)
+      - Chat ID (if existing session)
+
+4. MESSAGE VALIDATION (Content Filtering)
+   Actor: Backend API
+   Action: Receives POST /api/chats/ai/response
+   
+   Actor: Content Filter System
+   Steps:
+   a. Calls validateMessage(message)
+   b. Checks if message is empty
+      - If empty → Return { valid: false, reason: "Message is empty" }
+   
+   c. Checks for profanity (containsProfanity):
+      - Converts message to lowercase
+      - Splits into words
+      - Removes punctuation
+      - Compares against PROFANITY_WORDS list
+      - Checks full message for profanity patterns
+      - If profanity found → Return { valid: false, reason: "I'm a mental health-focused AI, and I prefer to keep our conversations respectful and supportive. Could you please rephrase your message without profanity? I'm here to help with mental health concerns." }
+   
+   d. Checks if off-topic (isOffTopic):
+      - Compares against OFF_TOPIC_KEYWORDS (recipes, sports, movies, etc.)
+      - Allows keywords if in mental health context
+      - If off-topic → Return { valid: false, reason: "I'm a specialized AI focused exclusively on mental health and wellness. I can help you with emotions, stress, anxiety, depression, relationships, therapy, coping strategies, and other mental health topics. Could you please ask me something related to mental health or emotional wellbeing?" }
+   
+   e. Checks if mental health related (isMentalHealthRelated):
+      - Compares against MENTAL_HEALTH_KEYWORDS
+      - Checks for mental health patterns (regex)
+      - If not related → Return { valid: false, reason: "I'm a mental health-focused AI assistant. I'm here to help with emotions, stress, anxiety, depression, relationships, coping strategies, therapy, and wellness. Please share something related to your mental health or emotional wellbeing, and I'll be happy to help." }
+   
+   f. If all checks pass → Return { valid: true, reason: "" }
+
+5A. VALIDATION FAILED PATH
+   Actor: Backend API
+   Action: Returns validation error message as AI response
+   
+   Actor: Frontend
+   Action:
+   a. Receives response with validation.reason
+   b. Displays error message as AI response
+   c. Updates emotion indicator (if applicable)
+   d. User can retry with different message
+
+5B. VALIDATION PASSED PATH - AI RESPONSE GENERATION
+   Actor: Backend API
+   Steps:
+   a. Tries to find matching prompt-completion pair (findBestMatch)
+   b. Initializes Groq client with API key
+   
+   Decision Point: Match confidence level
+   
+   If match.score >= 0.6 (High confidence):
+      - Use matched completion directly as AI response
+      - Log: "Using matched response (score: X)"
+   
+   If match.score >= 0.3 and < 0.6 (Moderate confidence):
+      - Use matched completion as context for Groq
+      - Build system prompt with matched response as guide
+      - Call Groq API with enhanced prompt
+      - Log: "Using matched response with enhancement (score: X)"
+   
+   If match.score < 0.3 or no match (Low/No confidence):
+      - Use standard Groq system prompt
+      - Call Groq API with full context
+      - Log: "No matching prompt found, using standard Groq response"
+   
+   Actor: Groq API
+   Action:
+   a. Receives chat completion request
+   b. Processes with model: llama-3.1-8b-instant
+   c. Parameters: temperature=0.7, max_tokens=500, top_p=0.9
+   d. Returns AI-generated response
+   
+   Actor: Backend API
+   Action:
+   a. Extracts response from Groq completion
+   b. Returns response with emotion and match info
+
+6. RESPONSE DISPLAY
+   Actor: Frontend
+   Steps:
+   a. Receives AI response from backend
+   b. Displays response in chat UI
+   c. Updates emotion indicator
+   d. Saves message to chat history (if authenticated)
+   e. Updates conversation context
+
+7. CONTINUATION
+   Actor: User
+   Action: Can continue conversation or perform other actions:
+   - Send another message
+   - Create new chat session
+   - View chat history
+   - Navigate to video chat
+   - Book therapist session
+
+POSTCONDITIONS:
+- Message validated for content appropriateness
+- AI response generated and displayed
+- Conversation context maintained
+- Emotion tracked (if applicable)
+- Chat history saved (if authenticated)
+
+ERROR HANDLING:
+- Validation failure → Show friendly redirect message
+- Groq API error → Show error message, allow retry
+- Network error → Show connection error, allow retry
+- Empty message → Prevent sending
+
+================================================================================
+WORKFLOW 3: VIDEO CHAT (VOICE THERAPY) SESSION
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Web Speech API (Browser)
+- Backend API
+- Groq AI API
+- Emotion Analysis System
+
+PRECONDITIONS:
+- User is on Video Chat page
+- Browser supports Web Speech API
+- Microphone permissions granted
+- Backend API is running
+
+WORKFLOW STEPS:
+
+1. USER INITIATES VIDEO CHAT
+   Actor: User
+   Action: Navigates to Video Chat page
+   
+   Actor: Frontend
+   Action:
+   a. Displays video chat interface
+   b. Shows microphone button
+   c. Requests microphone permission
+
+2. MICROPHONE PERMISSION
+   Actor: Browser
+   Action: Requests microphone access
+   
+   Decision Point: User grants/denies permission
+   
+   If denied:
+      - Show error message
+      - Explain permission requirement
+      - Allow user to grant manually
+   
+   If granted:
+      - Proceed to speech recognition setup
+
+3. USER STARTS LISTENING
+   Actor: User
+   Action: Clicks microphone button to start
+   
+   Actor: Frontend
+   Steps:
+   a. Initializes Web Speech API (webkitSpeechRecognition)
+   b. Configures recognition:
+      - Continuous listening enabled
+      - Interim results enabled
+      - Language: English (or user preference)
+   c. Starts recognition
+   d. Shows listening indicator
+
+4. USER SPEAKS
+   Actor: User
+   Action: Speaks into microphone
+   
+   Actor: Web Speech API
+   Steps:
+   a. Captures audio input
+   b. Converts speech to text
+   c. Provides interim results (as user speaks)
+   d. Provides final transcript (when user pauses)
+
+5. INTERIM RESULTS DISPLAY
+   Actor: Frontend
+   Action:
+   a. Receives interim transcript
+   b. Displays in chat UI (with "listening..." indicator)
+   c. Updates in real-time
+
+6. FINAL TRANSCRIPT PROCESSING
+   Actor: Frontend
+   Steps:
+   a. Receives final transcript
+   b. Displays user message in chat UI
+   c. Analyzes emotion from transcript
+   d. Sends to backend API with:
+      - Transcript text
+      - Conversation history
+      - Detected emotion
+      - User ID (if authenticated)
+
+7. AI RESPONSE GENERATION
+   Actor: Backend API
+   Action: Same as Text Chat Workflow (steps 4-5B)
+   - Content filtering applied
+   - Groq API called
+   - Response generated
+
+8. TEXT-TO-SPEECH CONVERSION
+   Actor: Frontend
+   Steps:
+   a. Receives AI text response
+   b. Displays response in chat UI
+   c. Initializes Web Speech Synthesis API
+   d. Converts text to speech
+   e. Plays audio response
+   f. Pauses speech recognition during playback
+
+9. RECOGNITION RESUMES
+   Actor: Frontend
+   Action:
+   a. After AI speech completes
+   b. Resumes speech recognition
+   c. Ready for next user input
+
+10. USER CONTROLS
+    Actor: User
+    Actions available:
+    - Toggle microphone on/off
+    - End session (returns to chat)
+    - Book in-home therapy session
+    - Navigate away (ends session)
+
+POSTCONDITIONS:
+- Voice session completed
+- Transcripts saved (if authenticated)
+- Emotion tracked
+- AI responses generated and spoken
+
+ERROR HANDLING:
+- Microphone permission denied → Show instructions
+- Speech recognition error → Show error, allow retry
+- Network error → Show connection error
+- No speech detected → Continue listening
+
+================================================================================
+WORKFLOW 4: FIND & BOOK THERAPIST
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Browser Geolocation API
+- Backend API
+- MongoDB (Geospatial Query)
+- Therapist Database
+
+PRECONDITIONS:
+- User is on Chat or Video Chat page
+- User clicks "Book In-Home Therapy Session"
+- Backend has therapists in database
+
+WORKFLOW STEPS:
+
+1. USER INITIATES THERAPIST SEARCH
+   Actor: User
+   Action: Clicks "Book In-Home Therapy Session" button
+   
+   Actor: Frontend
+   Action:
+   a. Opens therapist booking dialog
+   b. Requests geolocation permission
+
+2. GEOLOCATION REQUEST
+   Actor: Browser
+   Action: Requests location permission
+   
+   Decision Point: User grants/denies permission
+   
+   If denied:
+      - Show error message
+      - Offer manual location entry (future feature)
+      - Or proceed with virtual therapists only
+   
+   If granted:
+      - Get current coordinates (latitude, longitude)
+      - Proceed to nearby search
+
+3. SEARCH FOR NEARBY THERAPISTS
+   Actor: Frontend
+   Action: Sends GET /api/therapists/nearby with:
+   - latitude
+   - longitude
+   - maxDistance: 20 (km)
+   - limit: 50
+   
+   Actor: Backend API
+   Steps:
+   a. Receives geolocation coordinates
+   b. Constructs MongoDB geospatial query:
+      - Uses $near operator
+      - Searches within 20km radius
+      - Filters by isAvailable: true
+      - Sorts by distance
+      - Limits to 50 results
+   c. Executes query on Therapist collection
+   d. Calculates distance for each therapist
+   e. Returns therapists with distance data
+
+4. DECISION POINT: THERAPISTS FOUND
+   
+   If nearby therapists found (within 20km):
+      Actor: Frontend
+      Action:
+      a. Displays therapists list with distance badges
+      b. Shows "X km away" for each
+      c. Sorts by distance (closest first)
+   
+   If no nearby therapists found:
+      Actor: Backend API
+      Action:
+      a. Fetches all available therapists (limit 10)
+      b. Marks as "Virtual Call Available"
+      
+      Actor: Frontend
+      Action:
+      a. Displays blue banner: "Connect Virtually with Therapists"
+      b. Shows therapists with "Virtual Call Available" badge
+
+5. DISPLAY THERAPIST LIST
+   Actor: Frontend
+   Action: Shows therapist cards (5 at a time) with:
+   - Name
+   - Rating and review count
+   - Specializations (badges)
+   - Location (city, address)
+   - Experience (years)
+   - Rate (per session)
+   - Distance (if nearby) or "Virtual Call Available"
+   - Bio and qualifications
+   - Action buttons
+
+6. USER ACTIONS ON THERAPIST
+   Actor: User
+   Actions available:
+   
+   a. VIEW MORE THERAPISTS
+      - Click "Load More" button
+      - Next 5 therapists displayed
+   
+   b. BOOK SESSION
+      - Click "Book Session" (nearby) or "Book Virtual Session"
+      - Confirmation toast shown
+      - Booking request sent (future: to therapist)
+   
+   c. CALL THERAPIST
+      - Click phone icon
+      - Opens phone dialer with therapist's number
+   
+   d. EMAIL THERAPIST
+      - Click email icon
+      - Opens email client with therapist's email
+
+7. BOOKING CONFIRMATION
+   Actor: Frontend
+   Action:
+   a. Shows success toast message
+   b. Logs booking (future: sends notification to therapist)
+   c. Dialog remains open for additional bookings
+
+POSTCONDITIONS:
+- Therapists displayed (nearby or virtual)
+- User can contact or book therapists
+- Booking confirmed (future: therapist notified)
+
+ERROR HANDLING:
+- Geolocation denied → Show virtual options only
+- No therapists found → Show message, suggest virtual
+- Network error → Show error, allow retry
+- Invalid coordinates → Show error, allow retry
+
+================================================================================
+WORKFLOW 5: COMMUNITY EVENTS - BROWSE & JOIN
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Backend API
+- Event Database
+- Event Host (for approval workflows)
+
+PRECONDITIONS:
+- User navigates to Community page
+- Events exist in database
+
+WORKFLOW STEPS:
+
+1. USER NAVIGATES TO COMMUNITY
+   Actor: User
+   Action: Clicks "Community" in navigation
+   
+   Actor: Frontend
+   Action:
+   a. Loads Community page
+   b. Sends GET /api/events request
+
+2. FETCH EVENTS
+   Actor: Backend API
+   Steps:
+   a. Receives GET /api/events request
+   b. Constructs query:
+      - Filters by future dates (date >= now)
+      - Optional filters: city, category, date
+   c. Populates hostId and participants
+   d. Sorts by date (ascending)
+   e. Limits to 50 results
+   f. Returns events with attendee counts
+
+3. DISPLAY EVENTS
+   Actor: Frontend
+   Action: Displays events in grid with:
+   - Category icon and badge
+   - Title and description
+   - Location (address, city)
+   - Date and time
+   - Attendees count
+   - Join button (or status if already joined)
+   - Host information
+
+4. USER FILTERS/SEARCHES
+   Actor: User
+   Actions:
+   a. Search by keyword
+   b. Filter by city (dropdown)
+   c. Filter by category
+   d. View event details
+   
+   Actor: Frontend
+   Action:
+   a. Updates query parameters
+   b. Sends filtered request to backend
+   c. Updates displayed events
+
+5. USER JOINS EVENT
+   Actor: User
+   Action: Clicks "Join" button on event
+   
+   Decision Point: User authentication
+   
+   If not authenticated:
+      - Prompt to login/register
+      - Redirect to auth page
+   
+   If authenticated:
+      Actor: Frontend
+      Action: Sends POST /api/events/:eventId/join with userId
+      
+      Actor: Backend API
+      Steps:
+      a. Finds event by ID
+      b. Checks if event is full (isFull())
+      c. Checks if user already participant (hasParticipant())
+      d. Checks if event requires approval
+      
+      Decision Point: Approval required
+      
+      If requiresApproval = false:
+         - Auto-approve participant
+         - Add to attendees list
+         - Update attendee count
+         - Return: "Successfully joined the event!"
+      
+      If requiresApproval = true:
+         - Add to participants with status: "pending"
+         - Return: "Join request submitted. Waiting for approval."
+      
+      e. Saves event to database
+      f. Returns updated event data
+
+6. DISPLAY JOIN STATUS
+   Actor: Frontend
+   Action:
+   a. Updates event card with user's status
+   b. Shows "Pending" or "Approved" badge
+   c. Displays success message
+
+POSTCONDITIONS:
+- Events displayed with filters applied
+- User joined event (approved or pending)
+- Event attendee count updated
+
+ERROR HANDLING:
+- Event not found → Show error message
+- Event full → Show "Event is full" message
+- Already participant → Show "Already joined" message
+- Network error → Show error, allow retry
+
+================================================================================
+WORKFLOW 6: COMMUNITY EVENTS - HOST EVENT
+================================================================================
+
+ACTORS:
+- User (Event Host)
+- Frontend Application
+- Backend API
+- Event Database
+
+PRECONDITIONS:
+- User is authenticated
+- User is on Community page
+
+WORKFLOW STEPS:
+
+1. USER INITIATES EVENT CREATION
+   Actor: User
+   Action: Clicks "Host an Event" button
+   
+   Actor: Frontend
+   Action: Opens event creation dialog with form
+
+2. USER FILLS EVENT FORM
+   Actor: User
+   Action: Enters event details:
+   - Title (required)
+   - Description (required)
+   - Location address (required)
+   - City (required)
+   - Date (required, must be future date)
+   - Time (required)
+   - Category: meditation/support/workshop/social
+   - Max attendees (required, min: 1)
+   - Requires approval (checkbox, default: false)
+
+3. FORM VALIDATION
+   Actor: Frontend
+   Steps:
+   a. Validates required fields
+   b. Validates date is in future
+   c. Validates max attendees >= 1
+   d. Shows validation errors if any
+
+4. USER SUBMITS FORM
+   Actor: User
+   Action: Clicks "Create Event" button
+   
+   Actor: Frontend
+   Action: Sends POST /api/events with:
+   - All form data
+   - hostId (from authenticated user)
+   - requiresApproval (boolean)
+
+5. EVENT CREATION
+   Actor: Backend API
+   Steps:
+   a. Receives event data
+   b. Validates hostId exists (checks User collection)
+   c. Creates new Event document:
+      - All provided details
+      - hostId set to current user
+      - requiresApproval set (default: false)
+      - participants array initialized (empty)
+      - createdAt and updatedAt timestamps
+   d. Saves to database
+   e. Returns created event
+
+6. SUCCESS CONFIRMATION
+   Actor: Frontend
+   Action:
+   a. Shows success message
+   b. Closes dialog
+   c. Refreshes events list
+   d. New event appears in community feed
+
+POSTCONDITIONS:
+- Event created in database
+- Event visible in community feed
+- User is set as host
+- Event ready for participants to join
+
+ERROR HANDLING:
+- Validation errors → Show field-specific errors
+- Date in past → Show "Date must be in future" error
+- Network error → Show error, allow retry
+- Host not found → Show error, redirect to login
+
+================================================================================
+WORKFLOW 7: EVENT MANAGEMENT (HOST)
+================================================================================
+
+ACTORS:
+- Event Host
+- Frontend Application
+- Backend API
+- Event Database
+- Participants (Users)
+
+PRECONDITIONS:
+- User is authenticated
+- User has created events
+- User is viewing their events
+
+WORKFLOW STEPS:
+
+1. HOST VIEWS THEIR EVENTS
+   Actor: Host
+   Action: Navigates to "My Events" or event management page
+   
+   Actor: Frontend
+   Action: Sends GET /api/events/user/:userId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds events where hostId = userId
+   b. Populates host and participant data
+   c. Returns events with:
+      - Attendees list
+      - Pending requests (if approval required)
+      - User participation status
+      - isHost flag
+
+2. HOST VIEWS EVENT DETAILS
+   Actor: Host
+   Action: Clicks on their event
+   
+   Actor: Frontend
+   Action: Displays event details with:
+   - All event information
+   - List of approved attendees
+   - List of pending join requests (if approval required)
+   - Management actions
+
+3. HOST ACTIONS - APPROVE JOIN REQUEST
+   Actor: Host
+   Action: Clicks "Approve" on pending request
+   
+   Actor: Frontend
+   Action: Sends PATCH /api/events/:eventId/approve/:userId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds event by ID
+   b. Verifies hostId matches authenticated user
+   c. Calls event.approveParticipant(userId)
+   d. Updates participant status to "approved"
+   e. Sets approvedAt timestamp
+   f. Saves event
+   g. Returns updated event
+   
+   Actor: Frontend
+   Action:
+   a. Updates UI to show user as approved
+   b. Moves user from pending to attendees
+   c. Updates attendee count
+
+4. HOST ACTIONS - REJECT JOIN REQUEST
+   Actor: Host
+   Action: Clicks "Reject" on pending request
+   
+   Actor: Frontend
+   Action: Sends PATCH /api/events/:eventId/reject/:userId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds event by ID
+   b. Verifies hostId matches authenticated user
+   c. Calls event.rejectParticipant(userId)
+   d. Updates participant status to "rejected"
+   e. Saves event
+   f. Returns updated event
+   
+   Actor: Frontend
+   Action:
+   a. Removes user from pending requests
+   b. Shows rejection confirmation
+
+5. HOST ACTIONS - UPDATE EVENT
+   Actor: Host
+   Action: Clicks "Edit Event"
+   
+   Actor: Frontend
+   Action:
+   a. Opens edit dialog with current event data
+   b. Allows modification of:
+      - Title, description, location
+      - Date, time
+      - Max attendees
+      - Category
+      - Requires approval
+   
+   Actor: Host
+   Action: Submits updated data
+   
+   Actor: Frontend
+   Action: Sends PATCH /api/events/:eventId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds event by ID
+   b. Verifies hostId matches authenticated user
+   c. Validates updates
+   d. Updates event document
+   e. Saves to database
+   f. Returns updated event
+   
+   Actor: Frontend
+   Action:
+   a. Updates event display
+   b. Shows success message
+
+6. HOST ACTIONS - DELETE EVENT
+   Actor: Host
+   Action: Clicks "Delete Event"
+   
+   Actor: Frontend
+   Action: Shows confirmation dialog
+   
+   Decision Point: User confirms
+   
+   If confirmed:
+      Actor: Frontend
+      Action: Sends DELETE /api/events/:eventId
+      
+      Actor: Backend API
+      Steps:
+      a. Finds event by ID
+      b. Verifies hostId matches authenticated user
+      c. Deletes event from database
+      d. Returns success message
+      
+      Actor: Frontend
+      Action:
+      a. Removes event from display
+      b. Shows success message
+   
+   If cancelled:
+      - Dialog closes, no action taken
+
+POSTCONDITIONS:
+- Event updated/deleted as requested
+- Participants approved/rejected
+- Changes reflected in UI
+- Database updated
+
+ERROR HANDLING:
+- Not authorized → Show "Only host can perform this action"
+- Event not found → Show error message
+- Validation error → Show field-specific errors
+- Network error → Show error, allow retry
+
+================================================================================
+WORKFLOW 8: EMOTION TRACKING
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Backend API
+- Emotion Database
+- Emotion Analysis System (for auto-tracking)
+
+PRECONDITIONS:
+- User is authenticated (for manual tracking)
+- User is on Dashboard or Chat page
+
+WORKFLOW STEPS:
+
+1. MANUAL EMOTION RECORDING
+   Actor: User
+   Action: Navigates to Dashboard and clicks "Record Emotion"
+   
+   Actor: Frontend
+   Action: Opens emotion recording dialog
+   
+   Actor: User
+   Action: Fills form:
+   - Emotion type (dropdown/selection)
+   - Intensity (1-10 slider)
+   - Optional notes
+   
+   Actor: User
+   Action: Clicks "Save"
+   
+   Actor: Frontend
+   Action: Sends POST /api/emotions with:
+   - userId
+   - emotion
+   - intensity
+   - notes
+   - context (optional)
+   
+   Actor: Backend API
+   Steps:
+   a. Creates new Emotion document
+   b. Sets date to current timestamp
+   c. Saves to database
+   d. Returns created emotion record
+   
+   Actor: Frontend
+   Action:
+   a. Updates emotion history chart
+   b. Updates statistics
+   c. Shows success message
+
+2. AUTO EMOTION TRACKING FROM CHAT
+   Actor: System (during chat workflow)
+   Action: When user message is added to chat
+   
+   Actor: Backend API
+   Steps:
+   a. Detects emotion from message
+   b. If emotion detected and user authenticated:
+      - Creates Emotion record
+      - Sets context to first 100 chars of message
+      - Saves to database
+   c. Emotion linked to chat message
+
+3. VIEW EMOTION HISTORY
+   Actor: User
+   Action: Views Dashboard or Emotion History page
+   
+   Actor: Frontend
+   Action: Sends GET /api/emotions/user/:userId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds emotions for user
+   b. Optional filters: startDate, endDate, limit
+   c. Sorts by date (descending)
+   d. Returns emotion records
+   
+   Actor: Frontend
+   Action: Displays:
+   - Emotion history chart (line/bar chart)
+   - Recent emotions list
+   - Statistics and trends
+
+4. VIEW EMOTION STATISTICS
+   Actor: User
+   Action: Views statistics section
+   
+   Actor: Frontend
+   Action: Sends GET /api/emotions/user/:userId/stats?days=30
+   
+   Actor: Backend API
+   Steps:
+   a. Finds emotions within date range (default: 30 days)
+   b. Calculates statistics:
+      - Total emotions recorded
+      - Count by emotion type
+      - Average intensity
+      - Daily averages
+   c. Returns statistics object
+   
+   Actor: Frontend
+   Action: Displays:
+   - Total count
+   - Emotion distribution chart
+   - Average intensity
+   - Daily trends
+
+5. DELETE EMOTION RECORD
+   Actor: User
+   Action: Clicks delete on emotion record
+   
+   Actor: Frontend
+   Action: Sends DELETE /api/emotions/:emotionId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds emotion by ID
+   b. Deletes from database
+   c. Returns success message
+   
+   Actor: Frontend
+   Action:
+   a. Removes from display
+   b. Updates statistics
+   c. Shows success message
+
+POSTCONDITIONS:
+- Emotion recorded in database
+- Statistics updated
+- Charts and trends reflect new data
+
+ERROR HANDLING:
+- Invalid emotion type → Show validation error
+- Invalid intensity → Show range error
+- Network error → Show error, allow retry
+- Emotion not found → Show error message
+
+================================================================================
+WORKFLOW 9: USER AUTHENTICATION (LOGIN/LOGOUT)
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Backend API
+- JWT System
+- User Database
+
+PRECONDITIONS:
+- User has registered account
+- User is on login page
+
+WORKFLOW STEPS:
+
+1. EMAIL/PASSWORD LOGIN
+   Actor: User
+   Action: Enters email and password, clicks "Sign In"
+   
+   Actor: Frontend
+   Action: Sends POST /api/users/login with credentials
+   
+   Actor: Backend API
+   Steps:
+   a. Finds user by email (includes password field)
+   b. If user not found → Return 401 "Invalid email or password"
+   c. Compares password using user.comparePassword()
+   d. If password invalid → Return 401 "Invalid email or password"
+   e. Generates JWT token (expires in 30 days)
+   f. Returns user data and token
+   
+   Actor: Frontend
+   Action:
+   a. Stores JWT token in localStorage
+   b. Stores user data in AuthContext
+   c. Sets authentication state
+   d. Redirects to Dashboard or previous page
+
+2. GOOGLE OAUTH LOGIN
+   Actor: User
+   Action: Clicks "Sign in with Google"
+   
+   Actor: Frontend
+   Steps:
+   a. Initiates Google OAuth flow
+   b. User authorizes on Google
+   c. Receives Google ID token
+   d. Sends POST /api/auth/google with token
+   
+   Actor: Backend API
+   Steps:
+   a. Verifies Google token with OAuth2Client
+   b. Extracts user info (email, name, picture, googleId)
+   c. Finds or creates user account
+   d. Generates JWT token
+   e. Returns user data and token
+   
+   Actor: Frontend
+   Action: Same as email/password login (step 1)
+
+3. LOGOUT
+   Actor: User
+   Action: Clicks "Logout" button
+   
+   Actor: Frontend
+   Steps:
+   a. Removes JWT token from localStorage
+   b. Clears user data from AuthContext
+   c. Resets authentication state
+   d. Redirects to homepage
+
+POSTCONDITIONS:
+- User authenticated (login) or logged out
+- Token stored/removed appropriately
+- User redirected to appropriate page
+
+ERROR HANDLING:
+- Invalid credentials → Show "Invalid email or password"
+- Google auth failure → Show error, allow retry
+- Network error → Show connection error
+- Token expired → Redirect to login
+
+================================================================================
+WORKFLOW 10: USER PROFILE MANAGEMENT
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Frontend Application
+- Backend API
+- User Database
+
+PRECONDITIONS:
+- User is authenticated
+- User is on Profile or Dashboard page
+
+WORKFLOW STEPS:
+
+1. VIEW PROFILE
+   Actor: User
+   Action: Navigates to Profile page
+   
+   Actor: Frontend
+   Action: Sends GET /api/users/:userId
+   
+   Actor: Backend API
+   Steps:
+   a. Finds user by ID
+   b. Returns user data (excluding password)
+   
+   Actor: Frontend
+   Action: Displays user information
+
+2. UPDATE PROFILE
+   Actor: User
+   Action: Edits profile information and clicks "Save"
+   
+   Actor: Frontend
+   Action: Sends PATCH /api/users/:userId with updates
+   
+   Actor: Backend API
+   Steps:
+   a. Finds user by ID
+   b. Removes password from updates (if present)
+   c. Validates updates
+   d. Updates user document
+   e. Returns updated user data
+   
+   Actor: Frontend
+   Action:
+   a. Updates displayed profile
+   b. Updates AuthContext
+   c. Shows success message
+
+3. DELETE ACCOUNT
+   Actor: User
+   Action: Clicks "Delete Account"
+   
+   Actor: Frontend
+   Action: Shows confirmation dialog
+   
+   Decision Point: User confirms
+   
+   If confirmed:
+      Actor: Frontend
+      Action: Sends DELETE /api/users/:userId
+      
+      Actor: Backend API
+      Steps:
+      a. Finds user by ID
+      b. Deletes user document
+      c. Returns success message
+      
+      Actor: Frontend
+      Action:
+      a. Logs out user
+      b. Clears all data
+      c. Redirects to homepage
+      d. Shows confirmation message
+   
+   If cancelled:
+      - Dialog closes, no action taken
+
+POSTCONDITIONS:
+- Profile updated or account deleted
+- Changes reflected in UI
+- Database updated
+
+ERROR HANDLING:
+- User not found → Show error message
+- Validation error → Show field-specific errors
+- Network error → Show error, allow retry
+
+================================================================================
+WORKFLOW 11: CONTENT FILTERING (DETAILED)
+================================================================================
+
+ACTORS:
+- User (End User/Patient)
+- Content Filter System (Backend)
+- Backend API
+- Groq AI API
+
+PRECONDITIONS:
+- User sends message in chat
+- Message reaches backend API
+
+WORKFLOW STEPS:
+
+1. MESSAGE RECEIVED
+   Actor: Backend API
+   Action: Receives POST /api/chats/ai/response with message
+   
+   Actor: Content Filter System
+   Action: Calls validateMessage(message)
+
+2. EMPTY MESSAGE CHECK
+   Actor: Content Filter System
+   Action: Checks if message is empty or whitespace only
+   
+   If empty:
+      Return: { valid: false, reason: "Message is empty" }
+   
+   If not empty:
+      Proceed to profanity check
+
+3. PROFANITY CHECK
+   Actor: Content Filter System
+   Action: Calls containsProfanity(message)
+   
+   Steps:
+   a. Converts message to lowercase
+   b. Splits message into words
+   c. For each word:
+      - Removes punctuation
+      - Compares against PROFANITY_WORDS list
+      - If match found → Return true
+   d. Checks full message for profanity patterns
+   e. If profanity found → Return true
+   
+   If profanity detected:
+      Return: { 
+         valid: false, 
+         reason: "I'm a mental health-focused AI, and I prefer to keep our conversations respectful and supportive. Could you please rephrase your message without profanity? I'm here to help with mental health concerns." 
+      }
+   
+   If no profanity:
+      Proceed to off-topic check
+
+4. OFF-TOPIC CHECK
+   Actor: Content Filter System
+   Action: Calls isOffTopic(message)
+   
+   Steps:
+   a. Converts message to lowercase
+   b. Checks for OFF_TOPIC_KEYWORDS (recipes, sports, movies, etc.)
+   c. For each keyword found:
+      - Checks if keyword is in mental health context
+      - Uses regex to check for mental health context words nearby
+      - If no context → Return true (off-topic)
+   d. If off-topic detected:
+      Return: { 
+         valid: false, 
+         reason: "I'm a specialized AI focused exclusively on mental health and wellness. I can help you with emotions, stress, anxiety, depression, relationships, therapy, coping strategies, and other mental health topics. Could you please ask me something related to mental health or emotional wellbeing?" 
+      }
+   
+   If not off-topic:
+      Proceed to mental health relevance check
+
+5. MENTAL HEALTH RELEVANCE CHECK
+   Actor: Content Filter System
+   Action: Calls isMentalHealthRelated(message)
+   
+   Steps:
+   a. Converts message to lowercase
+   b. Checks for MENTAL_HEALTH_KEYWORDS:
+      - Emotions (anxiety, depression, stress, etc.)
+      - Mental health conditions (PTSD, trauma, OCD, etc.)
+      - Therapy terms (therapy, counseling, etc.)
+      - Relationship terms (in mental health context)
+      - Coping mechanisms (meditation, mindfulness, etc.)
+   c. Checks for mental health patterns using regex:
+      - "how (do|can) i (feel|deal|cope|handle|manage)"
+      - "i (feel|am feeling|feel like)"
+      - "i'm (feeling|struggling|having|going through)"
+      - "i (have|am|was) (anxiety|depression|stress|trauma)"
+      - "(help|support) (me|with)"
+      - "(therapy|therapist|counseling)"
+      - "(mental health|wellness|wellbeing)"
+   d. If keyword or pattern found → Return true
+   
+   If not mental health related:
+      Return: { 
+         valid: false, 
+         reason: "I'm a mental health-focused AI assistant. I'm here to help with emotions, stress, anxiety, depression, relationships, coping strategies, therapy, and wellness. Please share something related to your mental health or emotional wellbeing, and I'll be happy to help." 
+      }
+   
+   If mental health related:
+      Proceed to validation success
+
+6. VALIDATION SUCCESS
+   Actor: Content Filter System
+   Action: Returns { valid: true, reason: "" }
+   
+   Actor: Backend API
+   Action: Proceeds with AI response generation (Groq API call)
+
+7. VALIDATION FAILURE RESPONSE
+   Actor: Backend API
+   Action: Returns validation error message as AI response
+   
+   Actor: Frontend
+   Action:
+   a. Receives response with validation.reason
+   b. Displays error message as AI response
+   c. User can retry with different message
+
+POSTCONDITIONS:
+- Message validated for content appropriateness
+- Inappropriate messages filtered with friendly redirects
+- Valid messages proceed to AI generation
+
+ERROR HANDLING:
+- All validation errors return friendly messages
+- No exceptions thrown, graceful degradation
+- User always receives response (either AI or filter message)
+
+================================================================================
+WORKFLOW 12: THERAPIST SEED (ADMIN/SYSTEM)
+================================================================================
+
+ACTORS:
+- Admin/System
+- Seed Script
+- MongoDB Database
+- Therapist Model
+
+PRECONDITIONS:
+- MongoDB connection established
+- Therapist model defined
+- Seed script available
+
+WORKFLOW STEPS:
+
+1. ADMIN RUNS SEED COMMAND
+   Actor: Admin
+   Action: Runs `npm run seed:therapists`
+   
+   Actor: Seed Script
+   Steps:
+   a. Connects to MongoDB
+   b. Checks for existing therapists
+   c. Optionally deletes existing therapists
+   d. Gets or creates host user (for events)
+
+2. CREATE SAMPLE THERAPISTS
+   Actor: Seed Script
+   Action: Creates 20 sample therapists with:
+   - Name, email, phone
+   - Specializations (anxiety, depression, trauma, etc.)
+   - Location with coordinates (GeoJSON Point format)
+   - Experience (years)
+   - Rate (per session)
+   - Bio and qualifications
+   - Languages (default: English)
+   - Ratings and review counts
+   - Availability status
+
+3. SAVE TO DATABASE
+   Actor: Seed Script
+   Action: Saves all therapists to MongoDB
+   
+   Actor: MongoDB
+   Action: Stores therapist documents with geospatial indexes
+
+4. VERIFICATION
+   Actor: Seed Script
+   Action: Logs success message with count
+
+POSTCONDITIONS:
+- 20 therapists in database
+- Therapists available for geospatial queries
+- Therapists ready for booking
+
+ERROR HANDLING:
+- Connection error → Show error, exit
+- Validation error → Show field error, skip therapist
+- Duplicate error → Skip or update existing
+
+================================================================================
+WORKFLOW 13: EVENT SEED (ADMIN/SYSTEM)
+================================================================================
+
+ACTORS:
+- Admin/System
+- Seed Script
+- MongoDB Database
+- Event Model
+- User Model (for host)
+
+PRECONDITIONS:
+- MongoDB connection established
+- Event model defined
+- User exists or can be created
+- Seed script available
+
+WORKFLOW STEPS:
+
+1. ADMIN RUNS SEED COMMAND
+   Actor: Admin
+   Action: Runs `npm run seed:events`
+   
+   Actor: Seed Script
+   Steps:
+   a. Connects to MongoDB
+   b. Gets or creates host user
+   c. Prepares to create events
+
+2. CREATE SAMPLE EVENTS
+   Actor: Seed Script
+   Action: Creates 15 sample events with:
+   - Various categories (meditation, support, workshop, social)
+   - Different cities (NY, LA, Chicago, Seattle, etc.)
+   - Future dates (5-21 days from now)
+   - Different times
+   - Different max attendees (5-50)
+   - Some require approval, some don't
+   - Host ID set to seed user
+
+3. SAVE TO DATABASE
+   Actor: Seed Script
+   Action: Saves all events to MongoDB
+   
+   Actor: MongoDB
+   Action: Stores event documents
+
+4. VERIFICATION
+   Actor: Seed Script
+   Action: Logs success message with count
+
+POSTCONDITIONS:
+- 15 events in database
+- Events visible in community feed
+- Events ready for users to join
+
+ERROR HANDLING:
+- Connection error → Show error, exit
+- Host not found → Create default host
+- Validation error → Show field error, skip event
+- Date error → Use default future date
+
+================================================================================
+END OF WORKFLOWS DOCUMENTATION
+================================================================================
+

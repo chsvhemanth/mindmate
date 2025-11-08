@@ -6,6 +6,7 @@ import {
   loadPromptCompletions, 
   updatePromptCompletions as updatePairs 
 } from '../services/promptMatcher.js';
+import { validateMessage } from '../utils/contentFilter.js';
 
 // Create a new chat session
 export const createChat = async (req, res) => {
@@ -205,6 +206,19 @@ export const getAIResponse = async (req, res) => {
       });
     }
 
+    // Validate message content (profanity, topic relevance)
+    const validation = validateMessage(message);
+    if (!validation.valid) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          response: validation.reason,
+          emotion: emotion || 'neutral',
+          matched: null
+        }
+      });
+    }
+
     // Try to find a matching prompt-completion pair
     const match = findBestMatch(message, 0.3); // Threshold: 30% similarity minimum
     
@@ -223,7 +237,10 @@ export const getAIResponse = async (req, res) => {
       // Moderate confidence match (30-60%) - use completion as context for Groq
       console.log(`[AI] Using matched response with enhancement (score: ${match.score.toFixed(2)})`);
       
-      const systemPrompt = `You are a compassionate, empathetic AI therapist named MindMate. 
+      const systemPrompt = `You are a compassionate, empathetic AI therapist named MindMate, focused EXCLUSIVELY on mental health and wellness.
+
+IMPORTANT: You ONLY answer questions related to mental health, emotions, therapy, wellness, relationships, stress, anxiety, depression, coping strategies, and emotional wellbeing. If asked about anything else, politely redirect to mental health topics.
+
 A similar question was asked before, and this was the response: "${match.completion}"
 
 Use this as a guide, but adapt it naturally to the current user's question: "${message}"
@@ -231,6 +248,7 @@ Use this as a guide, but adapt it naturally to the current user's question: "${m
 - Make it feel natural and personalized to the current context
 - Keep responses concise (2-4 sentences typically) but meaningful
 - Use a warm, conversational tone
+- ONLY discuss mental health topics
 
 Current user emotion context: ${emotion || 'neutral'}`;
 
@@ -256,7 +274,15 @@ Current user emotion context: ${emotion || 'neutral'}`;
       // No good match found - use standard Groq response
       console.log('[AI] No matching prompt found, using standard Groq response');
       
-      const systemPrompt = `You are a compassionate, empathetic AI therapist named MindMate. Your role is to:
+      const systemPrompt = `You are a compassionate, empathetic AI therapist named MindMate, focused EXCLUSIVELY on mental health and wellness.
+
+CRITICAL RULES:
+1. You ONLY answer questions related to mental health, emotions, therapy, wellness, relationships, stress, anxiety, depression, trauma, coping strategies, and emotional wellbeing
+2. If asked about anything unrelated to mental health (recipes, sports, movies, technology, politics, etc.), politely but firmly redirect: "I'm a mental health-focused AI assistant. I'm here to help with emotions, stress, anxiety, depression, relationships, coping strategies, therapy, and wellness. Please share something related to your mental health or emotional wellbeing, and I'll be happy to help."
+3. Do not use profanity or inappropriate language
+4. Do not answer questions about topics outside mental health
+
+Your role is to:
 - Listen actively and provide supportive, non-judgmental responses
 - Help users explore their feelings and thoughts
 - Offer gentle guidance and coping strategies when appropriate
@@ -265,8 +291,9 @@ Current user emotion context: ${emotion || 'neutral'}`;
 - Maintain professional boundaries while being warm and understanding
 - Never provide medical diagnoses or replace professional therapy
 - Keep responses concise (2-4 sentences typically) but meaningful
-- if required, provide a short joke or a funny story to make the user laugh
+- If appropriate, provide a short, gentle joke or uplifting story to help lighten the mood
 - Use a warm, conversational tone
+- Always stay focused on mental health topics
 
 Current user emotion context: ${emotion || 'neutral'}`;
 
