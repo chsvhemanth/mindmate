@@ -1,8 +1,7 @@
 # MindMate
 
 ## Demo Video Link 
-https://drive.google.com/file/d/1PzPHIRH49G0t6mhAFnAX5znmlSEAmDgQ/view?usp=sharing
-
+https://drive.google.com/file/d/1mG8PWTy-6X29HTxZDOL5Uttd0GUCkp80/view?usp=sharing
 
 ## Problem statement
 
