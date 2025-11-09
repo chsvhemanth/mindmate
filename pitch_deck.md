@@ -602,4 +602,3 @@ We're building the future where:
 - Demo: [Demo Link]
 
 **Last Updated**: January 2025
-

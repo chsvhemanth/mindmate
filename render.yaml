@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: mindmate-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Add these environment variables in Render dashboard:
+      # - MONGODB_URI (your MongoDB Atlas connection string)
+      # - JWT_SECRET (generate a strong random string)
+      # - CORS_ORIGIN (your Vercel frontend URL, e.g., https://your-app.vercel.app)
+      # - GOOGLE_CLIENT_ID (your Google OAuth client ID)
+      # - GOOGLE_CLIENT_SECRET (your Google OAuth client secret)
+      # - GOOGLE_REDIRECT_URI (https://your-backend.onrender.com/api/auth/google/callback)
+      # - GROQ_API_KEY (your Groq API key)
+
