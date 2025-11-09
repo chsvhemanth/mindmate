@@ -55,8 +55,11 @@ GROQ_API_KEY=your-groq-api-key
 
 **Important Notes:**
 - Replace `your-backend-name.onrender.com` with your actual Render service URL
-- Replace `your-frontend-app.vercel.app` with your actual Vercel URL (you'll get this after deploying frontend)
+- For `CORS_ORIGIN`: You can set your frontend URL **before** deploying it if you know what it will be (e.g., `https://your-app-name.vercel.app`). If you don't know it yet, you can:
+  - Leave it empty or set to localhost for now
+  - Update it after deploying the frontend (Render will auto-redeploy when you change environment variables)
 - Generate a strong `JWT_SECRET` (you can use: `openssl rand -base64 32`)
+- **See `CORS_SETUP_RENDER.md` for detailed CORS configuration guide**
 
 ### Step 4: Deploy
 
@@ -122,14 +125,19 @@ VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 4. Your frontend will be available at: `https://your-app-name.vercel.app`
 5. Vercel will also provide a custom domain option
 
-### Step 5: Update Backend CORS
+### Step 5: Update Backend CORS (if not set earlier)
+
+**Note:** If you already set `CORS_ORIGIN` in Step 3 with your frontend URL, you can skip this step.
 
 1. Go back to Render dashboard
 2. Update the `CORS_ORIGIN` environment variable to include your Vercel URL:
    ```
    https://your-app-name.vercel.app
    ```
-3. Redeploy the backend (Render will auto-redeploy on environment variable changes)
+3. Save changes (Render will automatically redeploy on environment variable changes)
+4. Wait for redeploy to complete (1-2 minutes)
+
+**Tip:** You can set `CORS_ORIGIN` before deploying the frontend if you know the URL. See `CORS_SETUP_RENDER.md` for more details.
 
 ---
 
