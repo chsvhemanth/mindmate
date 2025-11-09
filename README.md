@@ -1,5 +1,9 @@
 # MindMate
 
+## Demo Video Link 
+https://drive.google.com/file/d/1PzPHIRH49G0t6mhAFnAX5znmlSEAmDgQ/view?usp=sharing
+
+
 ## Problem statement
 
 Mental health support is often inaccessible, expensive, or stigmatized, leaving many individuals struggling to find immediate, affordable, and personalized care. MindMate aims to bridge this gap by providing a comprehensive and accessible platform for mental wellness that combines AI-powered support, community engagement, and professional therapist connections.
